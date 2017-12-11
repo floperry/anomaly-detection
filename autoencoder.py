@@ -3,7 +3,7 @@ from importfile import *
 # Load data
 data = sio.loadmat("data/FM/traindata_psd_10000.mat")
 data_train = np.asarray(data['train_data']).transpose()
-data = sio.loadmat("data/FM/dsqpsk/testdata_psd_dsqpsk_m6dB.mat")
+data = sio.loadmat("data/FM/dsqpsk/testdata_psd_dsqpsk_12dB.mat")
 data_test = np.asarray(data['test_data']).transpose()
 
 
@@ -22,7 +22,7 @@ display_step = 10
 examples_to_show = 10
 
 # Network Parameters
-num_hidden_1 = 64    # 1st layer num features
+num_hidden_1 = 16    # 1st layer num features
 num_hidden_2 = 2    # 2nd layer features (the latent dim)
 num_input = 512    # data input
 
@@ -102,6 +102,7 @@ with tf.Session() as sess:
     canvas_orig = np.empty((2000, 512))
     canvas_recon = np.empty((2000, 512))
     canvas_encode = np.empty((2000, 2))
+    score = []
     # Encode and decode data
     for i in range(2000):
         batch_x = np.asarray(x_test[i]).reshape([1, 512])
@@ -109,10 +110,22 @@ with tf.Session() as sess:
         # Encode data
         f = sess.run(encoder_op, feed_dict={X: batch_x})
 
+        # Compute MSE
+        score.append(mean_squared_error(batch_x, g))
+
         canvas_orig[i, :] = scalar.inverse_transform(batch_x)
         canvas_recon[i, :] = scalar.inverse_transform(g)
         canvas_encode[i, :] = f
 
+    y_test = np.concatenate((np.zeros(1000), np.ones(1000)))
+    fpr, tpr, threshold = roc_curve(y_test, score, pos_label=1)
+    auc_value = auc(fpr, tpr)
+    print(auc_value)
+    plt.figure()
+    plt.plot(fpr, tpr)
+    plt.show()
+
+    '''
     # Save figure to pdf
     pp = PdfPages("result/bar.pdf")
     # Plot normal data
@@ -160,6 +173,8 @@ with tf.Session() as sess:
     sns.heatmap(canvas_encode, cmap="YlGnBu")
 
     plt.show()
+    '''
+
 
 
 
