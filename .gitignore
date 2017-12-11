@@ -1,0 +1,5 @@
+.idea/
+__pycache__/
+data/
+result/
+testfile.py
