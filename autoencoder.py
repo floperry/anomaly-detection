@@ -3,7 +3,7 @@ from importfile import *
 # Load data
 data = sio.loadmat("data/FM/traindata_psd_10000.mat")
 data_train = np.asarray(data['train_data']).transpose()
-data = sio.loadmat("data/FM/dsqpsk/testdata_psd_dsqpsk_12dB.mat")
+data = sio.loadmat("data/FM/interference/testdata_psd_interference_m10dB.mat")
 data_test = np.asarray(data['test_data']).transpose()
 
 
@@ -96,6 +96,11 @@ with tf.Session() as sess:
             print('Step % i: Minibatch Loss: %f' % (i, l))
             l_store.append(l)
             n_store.append(i)
+
+    # Save model
+    saver = tf.train.Saver()
+    model_path = "model/model.ckpt"
+    save_path = saver.save(sess, model_path)
 
     # Testing
     # Encode and decode data from test set
