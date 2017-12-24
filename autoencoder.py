@@ -126,7 +126,7 @@ with tf.Session() as sess:
 
     # Save model
     saver = tf.train.Saver()
-    model_path = "model/model_3Layer_0.ckpt"
+    model_path = "model/model_3Layer_7.ckpt"
     save_path = saver.save(sess, model_path)
 
     # Testing
