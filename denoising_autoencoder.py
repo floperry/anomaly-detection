@@ -3,7 +3,7 @@ from importfile import *
 # Load data
 data = sio.loadmat("data/FM/train_data_psd.mat")
 data_train = np.asarray(data['train_data'])
-data = sio.loadmat("data/FM/testdata_psd_fm_in_0dB.mat")
+data = sio.loadmat("data/FM/awgn/testdata_psd_awgn_24dB.mat")
 data_test = np.asarray(data['test_data'])
 
 # Data preprocessing
@@ -11,6 +11,12 @@ scalar = MinMaxScaler()
 x_train = scalar.fit_transform(data_train[0:50000, :])
 x_valid = scalar.transform(data_train[90000:100000, :])
 x_test = scalar.transform(data_test)
+
+
+# Mini-batch
+def get_batch(x, x_, size):
+    batch = np.random.choice(len(x), size, replace=False)
+    return x[batch], x_[batch]
 
 
 # Add gaussian noise
@@ -29,9 +35,10 @@ def add_noise_mask(x, v):
 
 
 # Training Parameters
-learning_rate = 0.5
-num_steps = 150
+learning_rate = 1
+num_steps = 120
 batch_size = 256
+noise_ratio = 0.05
 
 display_step = 2
 examples_to_show = 10
@@ -42,6 +49,7 @@ num_input = 512    # data input
 
 # tf Graph input
 X = tf.placeholder("float", [None, num_input])
+X_ = tf.placeholder("float", [None, num_input])
 
 weights = {
     'encoder_h1': tf.Variable(tf.random_normal([num_input, num_hidden_1])),
@@ -77,7 +85,7 @@ decoder_op = decoder(encoder_op)
 # Prediction
 y_pred = decoder_op
 # Targets (Labels) are the input data
-y_true = X
+y_true = X_
 
 # Define loss and optimizer, minimize the squared error
 loss = tf.reduce_mean(tf.pow(y_true - y_pred, 2))
@@ -100,12 +108,14 @@ with tf.Session() as sess:
         # Shuffle data
         np.random.shuffle(x_train)
         # Add noise to training data
-        x_train_corr = add_noise_gaussian(x_train, 0.1)
+        x_train_corr = add_noise_mask(x_train, noise_ratio)
+        # Get batch data
+        # x_corr, x_ = get_batch(x_train_corr, x_train, size=batch_size)
         # Run optimization op and cost op
-        _, l = sess.run([optimizer, loss], feed_dict={X: x_train_corr})
+        _, l = sess.run([optimizer, loss], feed_dict={X: x_train_corr, X_: x_train})
 
         # Validation
-        x_recon = sess.run(decoder_op, feed_dict={X: x_valid})
+        x_recon = sess.run(decoder_op, feed_dict={X: x_valid, X_: x_valid})
         l_valid = mean_squared_error(x_valid, x_recon)
         # Display logs per step
         if i % display_step == 0:
@@ -113,12 +123,12 @@ with tf.Session() as sess:
             l_store.append(l)
             n_store.append(i)
             loss_valid.append(l_valid)
-    '''
+
     # Save model
     saver = tf.train.Saver()
-    model_path = "model/model_1Layer_9.ckpt"
-    save_path = saver.save(sess, model_path)
-    '''
+    model_path = "model/denoising_model_1Layer_4.ckpt"
+    save_path = saver.save(sess, model_path)  
+
     # Testing
     # Encode and decode data from test set
     canvas_orig = np.empty((4000, 512))
@@ -143,6 +153,8 @@ with tf.Session() as sess:
     fpr, tpr, threshold = roc_curve(y_test, score, pos_label=1)
     auc_value = auc(fpr, tpr)
     print(auc_value)
+
+    '''
     plt.figure()
     plt.plot(fpr, tpr)
     plt.show()
@@ -178,6 +190,8 @@ with tf.Session() as sess:
     pp.savefig(plot3)
     plt.close()
     pp.close()
+    '''
+
 
     '''
     # Plot time-frequency figure
