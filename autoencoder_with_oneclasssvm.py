@@ -1,9 +1,11 @@
 from importfile import *
 from keras.models import Model, Input
 from keras.layers import Dense
+from keras.layers import Dropout
 from keras import optimizers
 from keras import losses
 from keras.callbacks import TensorBoard
+from keras.callbacks import EarlyStopping
 from time import time
 from sklearn import manifold
 from sklearn.svm import OneClassSVM
@@ -22,20 +24,29 @@ x_test = scalar.transform(data_test)
 
 # Network parameters
 num_input = 512
-num_hidden_1 = 8
-epochs = 200
+num_hidden_1 = 256
+num_hidden_2 = 64
+num_hidden_3 = 8
+epochs = 400
 optimizer = optimizers.Adadelta()
-model_autoencoder_path = "model_svm/autoencoder_1Layer_9.h5"
-model_encoder_path = "model_svm/encoder_1Layer_9.h5"
+model_autoencoder_path = "model_svm/autoencoder_3Layer_9.h5"
+model_encoder_path = "model_svm/encoder_3Layer_9.h5"
 
 # Define autoencoder
 inputs = Input(shape=(num_input,))
 encoded_1 = Dense(num_hidden_1, activation='relu')(inputs)
-decoded_1 = Dense(num_input, activation='linear')(encoded_1)
-autoencoder = Model(inputs=inputs, outputs=decoded_1)
-encoder = Model(inputs=inputs, outputs=encoded_1)
+encoded_2 = Dense(num_hidden_2, activation='relu')(encoded_1)
+encoded_3 = Dense(num_hidden_3, activation='relu')(encoded_2)
+decoded_1 = Dense(num_hidden_2, activation='relu')(encoded_3)
+decoded_2 = Dense(num_hidden_1, activation='relu')(decoded_1)
+decoded_3 = Dense(num_input, activation='linear')(decoded_2)
+autoencoder = Model(inputs=inputs, outputs=decoded_3)
+encoder = Model(inputs=inputs, outputs=encoded_3)
 autoencoder.compile(optimizer=optimizer, loss='mse')
-tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
+
+# Callbacks
+tensorboard = TensorBoard(log_dir="logs/autoencoder_3Layer_9")
+early_stopping = EarlyStopping(monitor='val_loss', patience=2)
 
 # Network training
 autoencoder.fit(x_train, x_train,
